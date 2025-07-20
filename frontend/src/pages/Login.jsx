@@ -25,8 +25,20 @@ const handleSubmit = async (e) => {
       password: isAdminLogin ? adminPassword : studentPassword,
     };
 
-    const res = await axios.post(`${import.meta.env.VITE_REACT_APP_API_URL}/auth/login`, loginData);
+    // Debug logging
+    console.log('Login attempt:', {
+      isAdminLogin,
+      studentId: isAdminLogin ? adminUsername : studentId,
+      apiUrl: import.meta.env.VITE_REACT_APP_API_URL
+    });
 
+    const apiUrl = `${import.meta.env.VITE_REACT_APP_API_URL}/${isAdminLogin ? 'admin-auth/login' : 'auth/login'}`;
+
+    console.log('Full API URL:', apiUrl);
+
+    const res = await axios.post(apiUrl, loginData);
+
+    console.log('Login successful:', res.data);
 
     localStorage.setItem("user", JSON.stringify({
       token: res.data.token,
@@ -54,11 +66,19 @@ const handleSubmit = async (e) => {
 
     navigate("/dashboard");
   } catch (err) {
-    console.error("Login failed:", err.response?.data || err.message);
-    alert(err.response?.data?.message || "Login failed. Check credentials.");
+    console.error("Login failed - Full Error:", err);
+    console.error("Response Data:", err.response?.data);
+    console.error("Response Status:", err.response?.status);
+    console.error("Response Headers:", err.response?.headers);
+    
+    const errorMessage = err.response?.data?.message || 
+                        err.response?.data?.error || 
+                        err.message || 
+                        "Login failed. Check credentials.";
+    
+    alert(errorMessage);
   }
 };
-
 
   // On load, prefill studentId if remembered
   useEffect(() => {

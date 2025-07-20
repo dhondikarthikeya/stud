@@ -1,15 +1,15 @@
 // frontend/src/services/api.js
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-
+// 🌐 Base API URL from .env
+const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_URL;
 
 // ✅ Axios instance with Authorization
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+// ✅ Add Authorization header if token exists
 api.interceptors.request.use((config) => {
   const user = JSON.parse(localStorage.getItem("user"));
   if (user?.token) {
@@ -31,24 +31,15 @@ export const fetchTodaySubjectAttendance = async () => {
 
 // ✅ Auth APIs
 export async function registerUser(userData) {
-  const res = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(userData),
-  });
-  return res.json();
+  const res = await api.post("/auth/register", userData);
+  return res.data;
 }
 
 export async function loginUser(credentials) {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(credentials),
-  });
+  try {
+    const res = await api.post("/auth/login", credentials);
+    const data = res.data;
 
-  const data = await res.json();
-
-  if (res.ok) {
     const userData = {
       token: data.token,
       role: data.role,
@@ -56,21 +47,23 @@ export async function loginUser(credentials) {
       studentId: data.studentId,
       firstName: data.firstName,
       lastName: data.lastName,
-      className: data.className, // ✅ Save className
+      className: data.className,
     };
+
     localStorage.setItem("user", JSON.stringify(userData));
+    return data;
+  } catch (error) {
+    console.error("Login failed:", error);
+    throw error.response?.data || { message: "Login failed" };
   }
-
-  return data;
 }
-
 
 // ✅ Admin Students APIs
 export async function getStudentsByClass(className) {
   return api.get(`/admin/students/class/${encodeURIComponent(className)}`);
 }
 
-// ✅ Admin Shared Document APIs (Corrected to match backend)
+// ✅ Admin Shared Document APIs
 export const fetchAdminDocuments = () => api.get("/admin-documents/shared");
 export const uploadAdminDocument = (formData) => api.post("/admin-documents/upload", formData);
 export const deleteAdminDocument = (id) => api.delete(`/admin-documents/${id}`);
