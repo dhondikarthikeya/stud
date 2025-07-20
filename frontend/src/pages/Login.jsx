@@ -25,7 +25,8 @@ const handleSubmit = async (e) => {
       password: isAdminLogin ? adminPassword : studentPassword,
     };
 
-    const res = await axios.post("http://localhost:5000/api/auth/login", loginData);
+    const res = await axios.post(`${import.meta.env.VITE_REACT_APP_API_URL}/auth/login`, loginData);
+
 
     localStorage.setItem("user", JSON.stringify({
       token: res.data.token,
