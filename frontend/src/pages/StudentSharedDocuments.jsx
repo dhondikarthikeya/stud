@@ -70,17 +70,18 @@ const StudentSharedDocuments = () => {
                     </div>
                   </div>
                   <Button
-                    onClick={() =>
-                      window.open(
-                        `http://localhost:5000/api/admin-documents/download/${doc.fileName}`,
-                        "_blank"
-                      )
-                    }
-                    className="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 text-sm font-medium"
-                  >
-                    <Download className="mr-2 h-5 w-5" />
-                    Download
-                  </Button>
+  onClick={() =>
+    window.open(
+      `${import.meta.env.VITE_API_URL}/admin-documents/download/${doc.fileName}`,
+      "_blank"
+    )
+  }
+  className="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 text-sm font-medium"
+>
+  <Download className="mr-2 h-5 w-5" />
+  Download
+</Button>
+
                 </div>
               ))}
             </div>

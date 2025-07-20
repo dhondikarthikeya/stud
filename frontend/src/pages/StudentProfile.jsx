@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import { useNavigate, useLocation } from "react-router-dom";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
-const BASE_URL = "http://localhost:5000";
 
 const StudentProfile = () => {
   const [profile, setProfile] = useState(null);

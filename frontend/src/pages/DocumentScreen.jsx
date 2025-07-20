@@ -141,17 +141,18 @@ const DocumentScreen = () => {
 
                   <div className="flex gap-2 mt-2 md:mt-auto">
                     <Button
-                      variant="outline"
-                      className="flex items-center gap-1"
-                      onClick={() =>
-                        window.open(
-                          `http://localhost:5000/api/documents/download/${doc.fileName}`,
-                          "_blank"
-                        )
-                      }
-                    >
-                      <Download className="h-4 w-4" /> View
-                    </Button>
+  variant="outline"
+  className="flex items-center gap-1"
+  onClick={() =>
+    window.open(
+      `${import.meta.env.VITE_API_URL}/documents/download/${doc.fileName}`,
+      "_blank"
+    )
+  }
+>
+  <Download className="h-4 w-4" /> View
+</Button>
+
                     <Button
                       variant="destructive"
                       onClick={() => handleDelete(doc._id)}
