@@ -32,7 +32,8 @@ const handleSubmit = async (e) => {
       apiUrl: import.meta.env.VITE_REACT_APP_API_URL
     });
 
-    const apiUrl = `${import.meta.env.VITE_REACT_APP_API_URL}/${isAdminLogin ? 'admin-auth/login' : 'auth/login'}`;
+    const apiUrl = `${import.meta.env.VITE_REACT_APP_API_URL}/api/${isAdminLogin ? 'admin-auth/login' : 'auth/login'}`;
+
 
     console.log('Full API URL:', apiUrl);
 
