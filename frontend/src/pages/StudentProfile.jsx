@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import { useNavigate, useLocation } from "react-router-dom";
-const BASE_URL = import.meta.env.VITE_API_URL;
 
+// ✅ Correct Backend API Base URL
+const BASE_URL = import.meta.env.VITE_REACT_APP_API_URL;
 
 const StudentProfile = () => {
   const [profile, setProfile] = useState(null);
@@ -13,7 +14,7 @@ const StudentProfile = () => {
   const [cacheBuster, setCacheBuster] = useState(Date.now());
 
   const navigate = useNavigate();
-  const location = useLocation(); // needed for path highlighting in nav
+  const location = useLocation();
 
   useEffect(() => {
     fetchProfile();
@@ -21,7 +22,7 @@ const StudentProfile = () => {
 
   const fetchProfile = async () => {
     try {
-      const res = await api.get("/profileRoutes/");
+      const res = await api.get("/profile");
       setProfile(res.data.user);
       setFormData(res.data.user);
       setInitialData(res.data.user);
@@ -58,7 +59,7 @@ const StudentProfile = () => {
       for (const key in formData) {
         if (formData[key]) formPayload.append(key, formData[key]);
       }
-      const res = await api.put("/profileRoutes/", formPayload);
+      const res = await api.put("/profile", formPayload);
       const updated = res.data.user;
 
       localStorage.setItem(
@@ -75,7 +76,6 @@ const StudentProfile = () => {
       setPreview(null);
       setEditing(false);
       setCacheBuster(Date.now());
-
       alert("Profile updated successfully.");
     } catch (err) {
       console.error("Update failed:", err);
@@ -85,6 +85,7 @@ const StudentProfile = () => {
 
   if (!profile) return <p className="p-6 text-center">Loading...</p>;
 
+  // ✅ Correct Image Path to include /uploads
   const photoUrl = preview
     ? preview
     : profile.photo
@@ -167,37 +168,14 @@ const StudentProfile = () => {
         </form>
       </div>
 
-      {/* ✅ Mobile Bottom Nav Bar (Visible on <=768px width) */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-md max-w-screen-md mx-auto flex justify-around items-center py-2 z-50 md:hidden">
-        <button onClick={() => navigate("/dashboard")} className="flex flex-col items-center text-sm">
-          <span className={`material-icons text-2xl ${location.pathname === "/dashboard" ? "text-blue-600" : "text-gray-700"}`}>home</span>
-          <span className={`${location.pathname === "/dashboard" ? "text-blue-600" : "text-gray-700"} text-xs`}>Dashboard</span>
-        </button>
-
-        <button onClick={() => navigate("/student-dashboard")} className="flex flex-col items-center text-sm">
-          <span className={`material-icons text-2xl ${location.pathname === "/student-dashboard" ? "text-blue-600" : "text-gray-700"}`}>fact_check</span>
-          <span className={`${location.pathname === "/student-dashboard" ? "text-blue-600" : "text-gray-700"} text-xs`}>Attendance</span>
-        </button>
-
-        <button onClick={() => navigate("/fee-payment")} className="flex flex-col items-center text-sm">
-          <span className={`material-icons text-2xl ${location.pathname === "/fee-payment" ? "text-blue-600" : "text-gray-700"}`}>currency_rupee</span>
-          <span className={`${location.pathname === "/fee-payment" ? "text-blue-600" : "text-gray-700"} text-xs`}>Fees</span>
-        </button>
-
-        <button onClick={() => navigate("/documents")} className="flex flex-col items-center text-sm">
-          <span className={`material-icons text-2xl ${location.pathname === "/documents" ? "text-blue-600" : "text-gray-700"}`}>folder_shared</span>
-          <span className={`${location.pathname === "/documents" ? "text-blue-600" : "text-gray-700"} text-xs`}>Documents</span>
-        </button>
-
-        <button onClick={() => navigate("/profile")} className="flex flex-col items-center text-sm">
-          <span className={`material-icons text-2xl ${location.pathname === "/profile" ? "text-blue-600" : "text-gray-700"}`}>person</span>
-          <span className={`${location.pathname === "/profile" ? "text-blue-600" : "text-gray-700"} text-xs`}>Profile</span>
-        </button>
+        <BottomNav location={location} navigate={navigate} />
       </div>
     </div>
   );
 };
 
+// ✅ Field Component
 const Field = ({ label, name, value, onChange, editing }) => (
   <div>
     <label className="block text-sm font-semibold text-[var(--text-secondary)] mb-1">{label}</label>
@@ -213,6 +191,32 @@ const Field = ({ label, name, value, onChange, editing }) => (
       <p className="text-[var(--text-primary)]">{value || "-"}</p>
     )}
   </div>
+);
+
+// ✅ Mobile Bottom Nav
+const BottomNav = ({ location, navigate }) => (
+  <>
+    {[
+      { path: "/dashboard", icon: "home", label: "Dashboard" },
+      { path: "/student-dashboard", icon: "fact_check", label: "Attendance" },
+      { path: "/fee-payment", icon: "currency_rupee", label: "Fees" },
+      { path: "/documents", icon: "folder_shared", label: "Documents" },
+      { path: "/profile", icon: "person", label: "Profile" },
+    ].map((item) => (
+      <button
+        key={item.path}
+        onClick={() => navigate(item.path)}
+        className="flex flex-col items-center text-sm"
+      >
+        <span className={`material-icons text-2xl ${location.pathname === item.path ? "text-blue-600" : "text-gray-700"}`}>
+          {item.icon}
+        </span>
+        <span className={`${location.pathname === item.path ? "text-blue-600" : "text-gray-700"} text-xs`}>
+          {item.label}
+        </span>
+      </button>
+    ))}
+  </>
 );
 
 export default StudentProfile;

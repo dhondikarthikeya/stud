@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// 🌐 Base API URL from .env (with /api)
-const API_BASE_URL = `${import.meta.env.VITE_REACT_APP_API_URL}/api`;
+// 🌐 Base API URL from .env (without duplicate /api)
+const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_URL;
 
 // ✅ Axios instance with Authorization
 const api = axios.create({
