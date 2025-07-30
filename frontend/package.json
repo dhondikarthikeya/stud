@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "postinstall": "esbuild install",
     "prebuild": "chmod +x ./node_modules/.bin/vite",
     "build": "vite build",
     "preview": "vite preview"
