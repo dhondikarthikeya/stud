@@ -1,5 +1,7 @@
 // frontend/src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+import MainPage from "./pages/MainPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -13,12 +15,11 @@ import AdminSharedDocuments from "./pages/AdminSharedDocuments";
 import StudentSharedDocuments from "./pages/StudentSharedDocuments";
 import AdminUploadScreen from "./pages/AdminUploadScreen";
 
-
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<MainPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -31,10 +32,6 @@ function App() {
         <Route path="/admin/shared-documents" element={<AdminSharedDocuments />} />
         <Route path="/student/shared-documents" element={<StudentSharedDocuments />} />
         <Route path="/admin/upload-documents" element={<AdminUploadScreen />} />
-        
-
-
-        
       </Routes>
     </Router>
   );
