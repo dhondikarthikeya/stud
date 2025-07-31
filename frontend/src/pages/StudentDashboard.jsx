@@ -27,16 +27,16 @@ const StudentDashboard = () => {
 
   // Fetch student attendance summary
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await api.get("/attendance/student/summary");
-        setSubjectSummary(res.data.summary || []);
-      } catch (err) {
-        console.error("Error loading attendance summary:", err);
-      }
-    };
-    if (user?.className) fetchData();
-  }, [user?.className]);
+  const fetchData = async () => {
+    try {
+      const res = await api.get("/attendance/subject-wise"); // ✅ Correct route
+      setSubjectSummary(res.data || []); // ✅ Set directly from array
+    } catch (err) {
+      console.error("Error loading attendance summary:", err);
+    }
+  };
+  if (user?.className) fetchData();
+}, [user?.className]);
 
   // Transform summary by subject name
   const summaryMap = Object.fromEntries(subjectSummary.map((s) => [s.subject, s]));
