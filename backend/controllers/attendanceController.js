@@ -1,145 +1,93 @@
 import Attendance from "../models/Attendance.js";
 import User from "../models/User.js";
-import { SUBJECTS } from "../constants/subjects.js";
 
-// ✅ POST /api/attendance — Admin submits attendance
+// ✅ Declare SUBJECTS locally
+const SUBJECTS = ["Telugu", "Hindi", "English", "Math", "Science", "Social"];
+
+// ✅ Admin: POST attendance
 export const postAttendance = async (req, res) => {
   try {
     const { className, subject, date, attendance } = req.body;
 
     if (!className || !subject || !date || !attendance) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return res.status(400).json({ message: "Missing required fields." });
     }
 
-    const newRecord = new Attendance({
+    const existing = await Attendance.findOne({ className, subject, date });
+    if (existing) {
+      return res.status(409).json({ message: "Attendance already submitted for this date and subject." });
+    }
+
+    const newAttendance = new Attendance({
       className,
       subject,
       date,
-      attendance: attendance.map((entry) => ({
-        studentId: String(entry.studentId),
-        status: entry.status,
+      attendance: attendance.map((item) => ({
+        studentId: item.studentId.toString(),
+        status: item.status,
       })),
     });
 
-    await newRecord.save();
-    res.status(201).json({ message: "Attendance saved successfully" });
-  } catch (error) {
-    console.error("Error saving attendance:", error);
-    res.status(500).json({ message: "Server error" });
+    await newAttendance.save();
+    res.status(201).json({ message: "Attendance saved successfully." });
+  } catch (err) {
+    console.error("Error saving attendance:", err);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
-// ✅ GET /api/attendance/student — Fetch all attendance records for logged-in student
+// ✅ Student: Get all subject-wise attendance
 export const getStudentAttendance = async (req, res) => {
   try {
-    const studentId = req.user.studentId;
-    if (!studentId) return res.status(403).json({ message: "Student ID missing" });
+    const studentId = req.user.id; // from token
 
-    const records = await Attendance.find({
-      "attendance.studentId": studentId,
-    });
+    const records = await Attendance.find({ "attendance.studentId": studentId });
 
-    const result = records.map((record) => {
-      const studentEntry = record.attendance.find(
-        (entry) => entry.studentId === studentId
-      );
+    const studentAttendance = records.map((record) => {
+      const studentRecord = record.attendance.find((a) => a.studentId === studentId);
       return {
         date: record.date,
         subject: record.subject,
-        status: studentEntry?.status || "Absent",
+        status: studentRecord ? studentRecord.status : "Absent",
       };
     });
 
-    res.json(result);
-  } catch (err) {
-    console.error("Error fetching student attendance:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(200).json(studentAttendance);
+  } catch (error) {
+    console.error("Error fetching student attendance:", error);
+    res.status(500).json({ message: "Server error." });
   }
 };
 
-// ✅ GET /api/attendance/student/today — Today's subject-wise attendance summary
-export const getTodaySubjectAttendance = async (req, res) => {
-  try {
-    const studentId = req.user.studentId;
-    if (!studentId) return res.status(403).json({ message: "Student ID missing" });
-
-    const today = new Date().toISOString().split("T")[0];
-
-    const records = await Attendance.find({ date: today });
-
-    const subjectWise = records
-      .map((record) => {
-        const studentEntry = record.attendance.find(
-          (entry) => entry.studentId === studentId
-        );
-        return {
-          subject: record.subject,
-          status: studentEntry ? studentEntry.status : "Absent",
-        };
-      })
-      .filter((entry) => entry.subject);
-
-    res.json(subjectWise);
-  } catch (err) {
-    console.error("Error fetching today's subject-wise attendance:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// ✅ GET /api/attendance/subject-wise — Overall subject-wise attendance % summary
+// ✅ Student: Get subject-wise summary (present count, total count, %)
 export const getSubjectWiseAttendance = async (req, res) => {
   try {
-    const studentId = req.user.id; // from verifyToken
-    const subjectStats = {};
+    const studentId = req.user.id;
 
-    SUBJECTS.forEach((subject) => {
-      subjectStats[subject] = {
+    const result = {};
+
+    for (const subject of SUBJECTS) {
+      const records = await Attendance.find({
         subject,
-        total: 0,
-        attended: 0,
-        absent: 0,
-      };
-    });
+        "attendance.studentId": studentId,
+      });
 
-    const records = await Attendance.find({
-      "attendance.studentId": studentId,
-    });
+      const total = records.length;
+      const present = records.filter((r) => {
+        const student = r.attendance.find((a) => a.studentId === studentId);
+        return student?.status === "Present";
+      }).length;
 
-    records.forEach((record) => {
-      const subject = record.subject;
-      if (!subjectStats[subject]) return;
-
-      const studentEntry = record.attendance.find(
-        (entry) => entry.studentId === studentId
-      );
-
-      if (studentEntry) {
-        subjectStats[subject].total += 1;
-        if (studentEntry.status === "Present") {
-          subjectStats[subject].attended += 1;
-        } else {
-          subjectStats[subject].absent += 1;
-        }
-      }
-    });
-
-    const result = SUBJECTS.map((subject) => {
-      const { total, attended, absent } = subjectStats[subject];
-      const percentage = total === 0 ? 0 : ((attended / total) * 100).toFixed(2);
-      return {
-        subject,
+      result[subject] = {
+        present,
         total,
-        attended,
-        absent,
-        percentage: parseFloat(percentage),
+        percentage: total === 0 ? 0 : Math.round((present / total) * 100),
       };
-    });
+    }
 
-    res.json({ summary: result });
-  } catch (err) {
-    console.error("❌ Error fetching subject-wise attendance:", err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching subject-wise attendance:", error);
+    res.status(500).json({ message: "Server error." });
   }
 };
-
-
