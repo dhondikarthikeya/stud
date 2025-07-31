@@ -88,44 +88,65 @@ export const getTodaySubjectAttendance = async (req, res) => {
 };
 
 // ✅ GET /api/attendance/subject-wise — Overall subject-wise attendance % summary
+import Attendance from "../models/Attendance.js";
+import { SUBJECTS } from "../constants/subjects.js"; // or define inline if not imported
+
+// GET /api/attendance/student — student-only route
 export const getSubjectWiseAttendance = async (req, res) => {
   try {
-    const studentId = req.user.studentId;
-    if (!studentId) return res.status(403).json({ message: "Student ID missing" });
+    const studentId = req.user.id; // from verifyToken
+    const subjectStats = {};
 
-    const records = await Attendance.find({ "attendance.studentId": studentId });
-
-    const summaryArray = [];
-    let totalClasses = 0;
-    let totalPresent = 0;
-
-    for (const subject of SUBJECTS) {
-      const filtered = records.filter((r) => r.subject === subject);
-      const total = filtered.length;
-      const present = filtered.reduce((acc, r) => {
-        const entry = r.attendance.find((a) => a.studentId === studentId);
-        return acc + (entry?.status === "Present" ? 1 : 0);
-      }, 0);
-
-      totalClasses += total;
-      totalPresent += present;
-
-      summaryArray.push({
+    // Initialize counts
+    SUBJECTS.forEach((subject) => {
+      subjectStats[subject] = {
         subject,
-        totalClasses: total,
-        classesAttended: present,
-        classesAbsent: total - present,
-        percentage: total > 0 ? ((present / total) * 100).toFixed(2) : "0.00",
-      });
-    }
+        total: 0,
+        attended: 0,
+        absent: 0,
+      };
+    });
 
-    const overallPercentage = totalClasses > 0
-      ? ((totalPresent / totalClasses) * 100).toFixed(2)
-      : "0.00";
+    // Fetch all attendance records for this student
+    const records = await Attendance.find({
+      "attendance.studentId": studentId,
+    });
 
-    res.json({ summary: summaryArray, overallPercentage });
+    records.forEach((record) => {
+      const subject = record.subject;
+      if (!subjectStats[subject]) return;
+
+      const studentEntry = record.attendance.find(
+        (entry) => entry.studentId === studentId
+      );
+
+      if (studentEntry) {
+        subjectStats[subject].total += 1;
+        if (studentEntry.status === "Present") {
+          subjectStats[subject].attended += 1;
+        } else {
+          subjectStats[subject].absent += 1;
+        }
+      }
+    });
+
+    // Convert map to array and calculate %
+    const result = SUBJECTS.map((subject) => {
+      const { total, attended, absent } = subjectStats[subject];
+      const percentage = total === 0 ? 0 : ((attended / total) * 100).toFixed(2);
+      return {
+        subject,
+        total,
+        attended,
+        absent,
+        percentage: parseFloat(percentage),
+      };
+    });
+
+    res.json(result);
   } catch (err) {
-    console.error("Error fetching subject-wise attendance:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Error fetching subject-wise attendance:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
+
