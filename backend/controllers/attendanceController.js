@@ -10,20 +10,21 @@ export const postAttendance = async (req, res) => {
       return res.status(400).json({ message: "Missing fields" });
     }
 
-    // Check for duplicate
     const existing = await Attendance.findOne({ className, date, subject });
     if (existing) {
-      return res.status(400).json({ message: "Attendance already submitted for this class, subject and date" });
+      return res.status(400).json({ message: "Attendance already submitted" });
     }
+
+    const formattedAttendance = attendance.map((entry) => ({
+      studentId: entry.studentId.toString(),
+      status: entry.status,
+    }));
 
     const newAttendance = new Attendance({
       className,
       date,
       subject,
-      attendance: attendance.map((entry) => ({
-        studentId: entry.studentId.toString(),
-        status: entry.status,
-      })),
+      attendance: formattedAttendance,
     });
 
     await newAttendance.save();
@@ -34,7 +35,7 @@ export const postAttendance = async (req, res) => {
   }
 };
 
-// ✅ GET /api/attendance/student — Student's raw attendance list
+// ✅ GET /api/attendance/student — Student's full attendance records
 export const getStudentAttendance = async (req, res) => {
   try {
     const studentId = req.user.id;
@@ -43,10 +44,8 @@ export const getStudentAttendance = async (req, res) => {
       "attendance.studentId": studentId,
     });
 
-    const filtered = records.map((record) => {
-      const studentRecord = record.attendance.find(
-        (a) => a.studentId === studentId
-      );
+    const formatted = records.map((record) => {
+      const studentRecord = record.attendance.find((a) => a.studentId === studentId);
       return {
         date: record.date,
         subject: record.subject,
@@ -54,14 +53,14 @@ export const getStudentAttendance = async (req, res) => {
       };
     });
 
-    res.json(filtered);
+    res.json(formatted);
   } catch (error) {
     console.error("Error getting student attendance:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// ✅ GET /api/attendance/today — Student's today subject-wise status
+// ✅ GET /api/attendance/student/today — Student's attendance today (subject-wise)
 export const getTodaySubjectAttendance = async (req, res) => {
   try {
     const studentId = req.user.id;
@@ -72,36 +71,29 @@ export const getTodaySubjectAttendance = async (req, res) => {
       "attendance.studentId": studentId,
     });
 
-    const result = records.map((record) => {
-      const entry = record.attendance.find(
-        (a) => a.studentId === studentId
-      );
+    const summary = records.map((record) => {
+      const entry = record.attendance.find((a) => a.studentId === studentId);
       return {
         subject: record.subject,
         status: entry?.status || "Absent",
       };
     });
 
-    res.json(result);
+    res.json(summary);
   } catch (error) {
     console.error("Error fetching today's attendance:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// ✅ GET /api/attendance/subject-summary — Overall subject-wise summary
-// ✅ GET /api/attendance/student/summary — Overall subject-wise stats
+// ✅ GET /api/attendance/student/summary — Subject-wise summary for a student
 export const getSubjectWiseAttendance = async (req, res) => {
   try {
     const studentId = req.user.id;
 
     const subjectAttendance = await Attendance.aggregate([
       { $unwind: "$attendance" },
-      {
-        $match: {
-          "attendance.studentId": studentId,
-        },
-      },
+      { $match: { "attendance.studentId": studentId } },
       {
         $group: {
           _id: "$subject",
@@ -116,13 +108,26 @@ export const getSubjectWiseAttendance = async (req, res) => {
       {
         $project: {
           subject: "$_id",
-          classesAttended: 1,
+          _id: 0,
           totalClasses: 1,
-          classesAbsent: {
-            $subtract: ["$totalClasses", "$classesAttended"],
-          },
+          classesAttended: 1,
+          classesAbsent: { $subtract: ["$totalClasses", "$classesAttended"] },
           percentage: {
-            $round: [{ $multiply: [{ $divide: ["$classesAttended", "$totalClasses"] }, 100] }, 2],
+            $cond: [
+              { $eq: ["$totalClasses", 0] },
+              0,
+              {
+                $round: [
+                  {
+                    $multiply: [
+                      { $divide: ["$classesAttended", "$totalClasses"] },
+                      100,
+                    ],
+                  },
+                  2,
+                ],
+              },
+            ],
           },
         },
       },
