@@ -1,129 +1,137 @@
-// controllers/attendanceController.js
 import Attendance from "../models/Attendance.js";
 import User from "../models/User.js";
 
-// ✅ POST: Submit attendance by Admin
+// ✅ POST /api/attendance — Admin submits attendance
 export const postAttendance = async (req, res) => {
   try {
-    const { className, subject, date, attendance } = req.body;
+    const { className, date, subject, attendance } = req.body;
 
-    if (!className || !subject || !date || !attendance) {
-      return res.status(400).json({
-        message: "Please provide className, subject, date, and attendance data",
-      });
+    if (!className || !date || !subject || !attendance) {
+      return res.status(400).json({ message: "Missing fields" });
     }
 
-    const fixedAttendance = attendance.map((entry) => ({
-      studentId: String(entry.studentId),
-      status: entry.status,
-    }));
-
-    const existing = await Attendance.findOne({ className, subject, date });
-
+    // Check for duplicate
+    const existing = await Attendance.findOne({ className, date, subject });
     if (existing) {
-      existing.attendance = fixedAttendance;
-      await existing.save();
-      return res.status(200).json({ message: "Attendance updated successfully" });
+      return res.status(400).json({ message: "Attendance already submitted for this class, subject and date" });
     }
 
     const newAttendance = new Attendance({
       className,
-      subject,
       date,
-      attendance: fixedAttendance,
+      subject,
+      attendance: attendance.map((entry) => ({
+        studentId: entry.studentId.toString(),
+        status: entry.status,
+      })),
     });
 
     await newAttendance.save();
     res.status(201).json({ message: "Attendance saved successfully" });
   } catch (error) {
-    console.error("❌ Error posting attendance:", error);
+    console.error("Error posting attendance:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// ✅ GET: Today's subject-wise attendance for student
+// ✅ GET /api/attendance/student — Student's raw attendance list
+export const getStudentAttendance = async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    const records = await Attendance.find({
+      "attendance.studentId": studentId,
+    });
+
+    const filtered = records.map((record) => {
+      const studentRecord = record.attendance.find(
+        (a) => a.studentId === studentId
+      );
+      return {
+        date: record.date,
+        subject: record.subject,
+        status: studentRecord?.status || "Absent",
+      };
+    });
+
+    res.json(filtered);
+  } catch (error) {
+    console.error("Error getting student attendance:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ✅ GET /api/attendance/today — Student's today subject-wise status
 export const getTodaySubjectAttendance = async (req, res) => {
   try {
-    const studentId = String(req.user.studentId);
-    const today = new Date().toISOString().split("T")[0];
-
-    const fixedSubjects = ["Telugu", "Hindi", "English", "Math", "Science", "Social"];
+    const studentId = req.user.id;
+    const today = new Date().toISOString().slice(0, 10);
 
     const records = await Attendance.find({
       date: today,
       "attendance.studentId": studentId,
     });
 
-    const todayMap = {};
-    for (const record of records) {
-      const studentRecord = record.attendance.find((a) => String(a.studentId) === studentId);
-      todayMap[record.subject] = studentRecord?.status || "N/A";
-    }
+    const result = records.map((record) => {
+      const entry = record.attendance.find(
+        (a) => a.studentId === studentId
+      );
+      return {
+        subject: record.subject,
+        status: entry?.status || "Absent",
+      };
+    });
 
-    const todaySummary = fixedSubjects.map((subject) => ({
-      subject,
-      status: todayMap[subject] || "Not Marked",
-    }));
-
-    res.status(200).json({ summary: todaySummary });
+    res.json(result);
   } catch (error) {
-    console.error("❌ Error fetching today's subject attendance:", error);
+    console.error("Error fetching today's attendance:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// ✅ GET: Subject-wise attendance summary for student
+// ✅ GET /api/attendance/subject-summary — Overall subject-wise summary
+// ✅ GET /api/attendance/student/summary — Overall subject-wise stats
 export const getSubjectWiseAttendance = async (req, res) => {
   try {
-    const studentId = String(req.user.studentId);
+    const studentId = req.user.id;
 
-    const summary = await Attendance.aggregate([
-      { $match: { "attendance.studentId": studentId } },
+    const subjectAttendance = await Attendance.aggregate([
       { $unwind: "$attendance" },
-      { $match: { "attendance.studentId": studentId } },
+      {
+        $match: {
+          "attendance.studentId": studentId,
+        },
+      },
       {
         $group: {
           _id: "$subject",
-          totalClasses: { $sum: 1 },
           classesAttended: {
             $sum: {
               $cond: [{ $eq: ["$attendance.status", "Present"] }, 1, 0],
             },
           },
+          totalClasses: { $sum: 1 },
         },
       },
       {
         $project: {
           subject: "$_id",
-          _id: 0,
-          totalClasses: 1,
           classesAttended: 1,
-          classesAbsent: { $subtract: ["$totalClasses", "$classesAttended"] },
+          totalClasses: 1,
+          classesAbsent: {
+            $subtract: ["$totalClasses", "$classesAttended"],
+          },
           percentage: {
-            $cond: [
-              { $eq: ["$totalClasses", 0] },
-              0,
-              {
-                $round: [
-                  {
-                    $multiply: [
-                      { $divide: ["$classesAttended", "$totalClasses"] },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-            ],
+            $round: [{ $multiply: [{ $divide: ["$classesAttended", "$totalClasses"] }, 100] }, 2],
           },
         },
       },
     ]);
 
-    res.status(200).json({ summary });
+    res.json({ summary: subjectAttendance });
   } catch (error) {
-    console.error("❌ Error fetching subject-wise attendance:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in getSubjectWiseAttendance:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
