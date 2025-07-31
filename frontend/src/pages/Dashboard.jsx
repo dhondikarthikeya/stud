@@ -60,15 +60,29 @@ const Dashboard = () => {
   const isAdmin = user?.role === "admin" || user?.role === "teacher";
   const [todayAttendance, setTodayAttendance] = useState([]);
 
-  useEffect(() => {
-    document.body.classList.add("font-poppins");
-    if (!isAdmin) {
-      fetchTodaySubjectAttendance()
-        .then((res) => setTodayAttendance(res.summary || []))
-        .catch((err) => console.error("Attendance Fetch Error:", err));
-    }
-    return () => document.body.classList.remove("font-poppins");
-  }, [isAdmin]);
+ useEffect(() => {
+  document.body.classList.add("font-poppins");
+
+  if (!isAdmin) {
+    fetchTodaySubjectAttendance()
+      .then((res) => {
+        console.log("✅ Attendance response:", res);
+        if (Array.isArray(res.summary)) {
+          setTodayAttendance(res.summary);
+        } else {
+          console.warn("⚠️ Unexpected attendance format:", res);
+          setTodayAttendance([]);
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Attendance Fetch Error:", err);
+        setTodayAttendance([]);
+      });
+  }
+
+  return () => document.body.classList.remove("font-poppins");
+}, [isAdmin]);
+
 
   const handleLogout = () => {
     localStorage.removeItem("user");
