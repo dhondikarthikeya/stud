@@ -1,8 +1,11 @@
+// middlewares/authMiddleware.js
+
 import jwt from "jsonwebtoken";
 
+// ✅ Middleware to verify any valid token (for both student/admin)
 export const verifyToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Bearer <token>
+  const token = authHeader && authHeader.split(" ")[1]; // Expected format: Bearer <token>
 
   if (!token) {
     return res.status(401).json({ message: "No token provided" });
@@ -11,13 +14,13 @@ export const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ Attach all relevant fields explicitly
+    // ✅ Attach relevant user data to the request object
     req.user = {
       id: decoded.id,
       role: decoded.role,
-      studentId: decoded.studentId || null, // needed for student attendance
-      username: decoded.username || null,   // optional (for admin)
-      subject: decoded.subject || null      // optional (for teacher/admin)
+      studentId: decoded.studentId || null, // for student
+      username: decoded.username || null,   // for admin
+      subject: decoded.subject || null      // for teacher/admin
     };
 
     next();
@@ -26,6 +29,7 @@ export const verifyToken = (req, res, next) => {
   }
 };
 
+// ✅ Middleware to restrict to Admins or Teachers
 export const verifyAdmin = (req, res, next) => {
   verifyToken(req, res, () => {
     if (req.user.role === "admin" || req.user.role === "teacher") {
@@ -36,6 +40,7 @@ export const verifyAdmin = (req, res, next) => {
   });
 };
 
+// ✅ Middleware to restrict to Students only
 export const verifyStudent = (req, res, next) => {
   verifyToken(req, res, () => {
     if (req.user.role === "student") {
