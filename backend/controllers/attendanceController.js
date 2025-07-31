@@ -66,32 +66,37 @@ export const getSubjectWiseAttendance = async (req, res) => {
   try {
     const studentId = req.user.id;
 
-    const result = {};
+    const attendanceRecords = await Attendance.find({ "attendance.studentId": studentId });
 
-    // Loop through each subject and calculate attendance for the student
-    for (const subject of SUBJECTS) {
-      const records = await Attendance.find({
-        subject,
-        "attendance.studentId": studentId,
-      });
+    const summary = {};
 
-      const total = records.length;
-      const present = records.filter((r) => {
-        const student = r.attendance.find((a) => a.studentId === studentId);
-        return student?.status === "Present";
-      }).length;
+    attendanceRecords.forEach((record) => {
+      const subject = record.subject;
+      const studentAttendance = record.attendance.find(a => a.studentId === studentId);
 
-      result[subject] = {
+      if (!summary[subject]) {
+        summary[subject] = { total: 0, present: 0 };
+      }
+
+      summary[subject].total += 1;
+      if (studentAttendance?.status === "Present") {
+        summary[subject].present += 1;
+      }
+    });
+
+    const response = Object.entries(summary).map(([subject, stats]) => {
+      const { total, present } = stats;
+      const percentage = total > 0 ? (present / total) * 100 : 0;
+
+      return {
         subject,
         total,
         present,
-        percentage: total === 0 ? 0 : Number(((present / total) * 100).toFixed(2)),
+        percentage: Number(percentage.toFixed(2)),
       };
-    }
+    });
 
-    // Convert to array to return as list
-    const summaryArray = Object.values(result);
-    res.status(200).json(summaryArray);
+    res.status(200).json(response);
   } catch (err) {
     console.error("Error in getSubjectWiseAttendance:", err);
     res.status(500).json({ message: "Server error" });
