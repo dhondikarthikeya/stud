@@ -60,37 +60,49 @@ export const getStudentAttendance = async (req, res) => {
 };
 
 // ✅ Student: Get subject-wise summary (present count, total count, %)
+// ✅ Add this to your attendanceController.js
+
 export const getSubjectWiseAttendance = async (req, res) => {
   try {
     const studentId = req.user.id;
 
-    const result = {};
+    // Fetch all attendance records for this student
+    const attendanceRecords = await Attendance.find({ student: studentId });
 
-    for (const subject of SUBJECTS) {
-      const records = await Attendance.find({
+    // Group attendance by subject
+    const summary = {};
+
+    attendanceRecords.forEach((record) => {
+      const subject = record.subject;
+
+      if (!summary[subject]) {
+        summary[subject] = { total: 0, present: 0 };
+      }
+
+      summary[subject].total += 1;
+      if (record.status === "Present") summary[subject].present += 1;
+    });
+
+    // Format summary for frontend
+    const response = Object.entries(summary).map(([subject, stats]) => {
+      const { total, present } = stats;
+      const percentage = total > 0 ? (present / total) * 100 : 0;
+
+      return {
         subject,
-        "attendance.studentId": studentId,
-      });
-
-      const total = records.length;
-      const present = records.filter((r) => {
-        const student = r.attendance.find((a) => a.studentId === studentId);
-        return student?.status === "Present";
-      }).length;
-
-      result[subject] = {
-        present,
         total,
-        percentage: total === 0 ? 0 : Math.round((present / total) * 100),
+        present,
+        percentage: Number(percentage.toFixed(2)),
       };
-    }
+    });
 
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Error fetching subject-wise attendance:", error);
-    res.status(500).json({ message: "Server error." });
+    res.status(200).json(response);
+  } catch (err) {
+    console.error("Error in getSubjectWiseAttendance:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 export const getTodaySubjectAttendance = async (req, res) => {
   try {
     const studentId = req.user.id;
