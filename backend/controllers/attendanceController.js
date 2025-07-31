@@ -112,9 +112,9 @@ export const getSubjectWiseAttendance = async (req, res) => {
 
       summaryArray.push({
         subject,
-        total,
-        present,
-        absent: total - present,
+        totalClasses: total,
+        classesAttended: present,
+        classesAbsent: total - present,
         percentage: total > 0 ? ((present / total) * 100).toFixed(2) : "0.00",
       });
     }
