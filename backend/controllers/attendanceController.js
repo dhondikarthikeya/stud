@@ -2,17 +2,10 @@
 import Attendance from "../models/Attendance.js";
 import User from "../models/User.js";
 
-// ✅ Post attendance with string-based studentIds
+// ✅ POST: Submit attendance by Admin
 export const postAttendance = async (req, res) => {
   try {
     const { className, subject, date, attendance } = req.body;
-
-    console.log("📩 POST /attendance body:", {
-      className,
-      subject,
-      date,
-      attendance,
-    });
 
     if (!className || !subject || !date || !attendance) {
       return res.status(400).json({
@@ -25,14 +18,13 @@ export const postAttendance = async (req, res) => {
       status: entry.status,
     }));
 
-    const existing = await Attendance.findOne({ className, date, subject });
+    const existing = await Attendance.findOne({ className, subject, date });
+
     if (existing) {
       existing.attendance = fixedAttendance;
       await existing.save();
       return res.status(200).json({ message: "Attendance updated successfully" });
     }
-
-    console.log("✅ Saving Attendance with subject:", subject);
 
     const newAttendance = new Attendance({
       className,
@@ -40,8 +32,8 @@ export const postAttendance = async (req, res) => {
       date,
       attendance: fixedAttendance,
     });
-    await newAttendance.save();
 
+    await newAttendance.save();
     res.status(201).json({ message: "Attendance saved successfully" });
   } catch (error) {
     console.error("❌ Error posting attendance:", error);
@@ -49,27 +41,22 @@ export const postAttendance = async (req, res) => {
   }
 };
 
-// ✅ Student attendance fetch
+// ✅ GET: Today's subject-wise attendance for student
 export const getTodaySubjectAttendance = async (req, res) => {
   try {
-    const studentId = req.user.studentId;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    const studentId = String(req.user.studentId);
+    const today = new Date().toISOString().split("T")[0];
 
     const fixedSubjects = ["Telugu", "Hindi", "English", "Math", "Science", "Social"];
 
     const records = await Attendance.find({
-      date: { $gte: today, $lt: tomorrow },
+      date: today,
       "attendance.studentId": studentId,
     });
 
     const todayMap = {};
     for (const record of records) {
-      const studentRecord = record.attendance.find((a) => a.studentId === studentId);
+      const studentRecord = record.attendance.find((a) => String(a.studentId) === studentId);
       todayMap[record.subject] = studentRecord?.status || "N/A";
     }
 
@@ -78,38 +65,22 @@ export const getTodaySubjectAttendance = async (req, res) => {
       status: todayMap[subject] || "Not Marked",
     }));
 
-    res.json({ summary: todaySummary });
+    res.status(200).json({ summary: todaySummary });
   } catch (error) {
-    console.error("Error fetching today's subject attendance:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("❌ Error fetching today's subject attendance:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// ✅ Subject-wise attendance summary
+// ✅ GET: Subject-wise attendance summary for student
 export const getSubjectWiseAttendance = async (req, res) => {
   try {
     const studentId = String(req.user.studentId);
 
-    console.log("📊 Getting summary for studentId:", studentId);
-
     const summary = await Attendance.aggregate([
-      // Match records that contain this student
-      {
-        $match: {
-          "attendance.studentId": studentId,
-        },
-      },
-      // Flatten attendance array
-      {
-        $unwind: "$attendance",
-      },
-      // Filter again after unwind
-      {
-        $match: {
-          "attendance.studentId": studentId,
-        },
-      },
-      // Group by subject
+      { $match: { "attendance.studentId": studentId } },
+      { $unwind: "$attendance" },
+      { $match: { "attendance.studentId": studentId } },
       {
         $group: {
           _id: "$subject",
@@ -121,7 +92,6 @@ export const getSubjectWiseAttendance = async (req, res) => {
           },
         },
       },
-      // Final format
       {
         $project: {
           subject: "$_id",
@@ -157,34 +127,3 @@ export const getSubjectWiseAttendance = async (req, res) => {
   }
 };
 
-
-// ✅ Today's subject-wise attendance (fixed S.No order)
-export const getTodaySubjectAttendance = async (req, res) => {
-  try {
-    const studentId = req.user.studentId;
-    const today = new Date().toISOString().split("T")[0];
-
-    const fixedSubjects = ["Telugu", "Hindi", "English", "Math", "Science", "Social"];
-
-    const records = await Attendance.find({
-      date: today,
-      "attendance.studentId": studentId,
-    });
-
-    const todayMap = {};
-    for (const record of records) {
-      const studentRecord = record.attendance.find((a) => a.studentId === studentId);
-      todayMap[record.subject] = studentRecord?.status || "N/A";
-    }
-
-    const todaySummary = fixedSubjects.map((subject) => ({
-      subject,
-      status: todayMap[subject] || "Not Marked",
-    }));
-
-    res.json({ summary: todaySummary });
-  } catch (error) {
-    console.error("Error fetching today's subject attendance:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
