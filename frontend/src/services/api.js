@@ -24,8 +24,10 @@ export async function fetchStudentAttendance() {
 }
 
 export const fetchTodaySubjectAttendance = async () => {
-  const res = await api.get("/api/attendance/student/today");
-  return res.data;
+  const res = await api.get("/attendance/student/today");
+  return { summary: res.data }; // wrap array in expected format
+};
+
 };
 
 // ✅ Auth APIs
