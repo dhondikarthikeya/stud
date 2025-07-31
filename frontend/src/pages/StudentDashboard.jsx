@@ -21,30 +21,46 @@ const COLOR_LIGHT = "#E5E7EB";  // Gray-200
 const SUBJECTS = ["Telugu", "Hindi", "English", "Math", "Science", "Social"];
 
 const StudentDashboard = () => {
-  const user = JSON.parse(localStorage.getItem("user"));
+ const user = JSON.parse(localStorage.getItem("user"));
   const navigate = useNavigate();
   const [subjectSummary, setSubjectSummary] = useState([]);
 
-  // Fetch student attendance summary
+  // 📊 Fetch subject-wise attendance summary
   useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const res = await api.get("/attendance/subject-wise"); // ✅ Correct route
-      setSubjectSummary(res.data || []); // ✅ Set directly from array
-    } catch (err) {
-      console.error("Error loading attendance summary:", err);
-    }
-  };
-  if (user?.className) fetchData();
-}, [user?.className]);
+    const fetchData = async () => {
+      try {
+        const res = await api.get("/attendance/subject-wise");
 
-  // Transform summary by subject name
+        // 💡 Normalize backend response into consistent array format
+        const data = res.data || {};
+        const formatted = Array.isArray(data)
+          ? data
+          : Object.entries(data).map(([subject, stats]) => ({
+              subject,
+              totalClasses: stats.total || 0,
+              classesAttended: stats.present || 0,
+              classesAbsent: (stats.total || 0) - (stats.present || 0),
+              percentage: stats.percentage || 0,
+            }));
+
+        setSubjectSummary(formatted);
+      } catch (err) {
+        console.error("Error loading attendance summary:", err);
+      }
+    };
+
+    if (user?.className) fetchData();
+  }, [user?.className]);
+
+  // 📌 Map for quick subject lookup
   const summaryMap = Object.fromEntries(subjectSummary.map((s) => [s.subject, s]));
 
-  // Compute total average percentage
-  const totalPercentage = subjectSummary.length
-    ? subjectSummary.reduce((acc, s) => acc + s.percentage, 0) / subjectSummary.length
-    : 0;
+  // 📈 Compute overall attendance %
+  const totalPercentage =
+    subjectSummary.length > 0
+      ? subjectSummary.reduce((acc, s) => acc + s.percentage, 0) / subjectSummary.length
+      : 0;
+
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] px-4 py-6 md:px-12 font-poppins">
