@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// ✅ Register Controller (Student/Optional for Testing)
+// ✅ Register (for students)
 export const register = async (req, res) => {
   try {
     const { studentId, password, role = "student", firstName, lastName, className } = req.body;
@@ -36,55 +36,51 @@ export const register = async (req, res) => {
   }
 };
 
-// ✅ Login Controller
+// ✅ Login (works for both students and admins)
 export const login = async (req, res) => {
-  const { studentId, password } = req.body;
-
   try {
-    if (!studentId || !password) {
-      return res.status(400).json({ message: "Student ID and password required" });
+    const { studentId, adminUsername, password } = req.body;
+
+    if ((!studentId && !adminUsername) || !password) {
+      return res.status(400).json({ message: "Missing credentials" });
     }
 
-    const user = await User.findOne({ studentId });
+    // Determine whether student or admin login
+    const query = studentId ? { studentId } : { adminUsername };
+    const user = await User.findOne(query);
+
     if (!user) {
-      return res.status(404).json({ message: "❌ User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "❌ Invalid credentials" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const tokenPayload = {
-      id: user._id,
-      role: user.role,
-      studentId: user.studentId,
-    };
+    // Generate token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
-
-    res.json({
-      message: "✅ Login successful",
+    res.status(200).json({
       token,
-      role: user.role,
-      id: user._id,
-      studentId: user.studentId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email || null,
-      phone: user.phone || null,
-      dob: user.dob || null,
-      gender: user.gender || null,
-      program: user.program || null,
-      department: user.department || null,
-      semester: user.semester || null,
-      admissionDate: user.admissionDate || null,
-      status: user.status || null,
-      subject: user.subject || null,
-      className: user.className || null,
+      user: {
+        id: user._id,
+        role: user.role,
+        studentId: user.studentId || null,
+        adminUsername: user.adminUsername || null,
+        firstName: user.firstName || null,
+        lastName: user.lastName || null,
+        className: user.className || null,
+        subject: user.subject || null,
+      },
     });
-  } catch (error) {
-    console.error("❌ Login Error:", error);
+
+  } catch (err) {
+    console.error("❌ Login Error:", err);
     res.status(500).json({ message: "Server error during login" });
   }
 };
