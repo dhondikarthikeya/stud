@@ -3,16 +3,17 @@ import express from "express";
 import {
   postAttendance,
   getStudentAttendance,
-  getTodaySubjectAttendance, // 👈 this one for student view
+  getTodaySubjectAttendance,
   getSubjectWiseAttendance,
 } from "../controllers/attendanceController.js";
-import verifyToken from "../middlewares/authMiddleware.js";
+
+import { verifyToken, verifyAdmin, verifyStudent } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", verifyToken, postAttendance); // Admin
-router.get("/student", verifyToken, getStudentAttendance); // Student full record
-router.get("/student/today", verifyToken, getTodaySubjectAttendance); // ✅ NEW: Today's summary
-router.get("/subject-wise", verifyToken, getSubjectWiseAttendance); // Subject wise summary
+router.post("/", verifyAdmin, postAttendance); // Admin/Teacher only
+router.get("/student", verifyStudent, getStudentAttendance); // Student only
+router.get("/student/today", verifyStudent, getTodaySubjectAttendance); // Student only
+router.get("/subject-wise", verifyStudent, getSubjectWiseAttendance); // Student only
 
 export default router;
