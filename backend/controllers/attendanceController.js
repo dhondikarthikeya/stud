@@ -95,9 +95,11 @@ export const getSubjectWiseAttendance = async (req, res) => {
 
     const records = await Attendance.find({ "attendance.studentId": studentId });
 
-    const summary = {};
+    const summaryArray = [];
+    let totalClasses = 0;
+    let totalPresent = 0;
 
-    SUBJECTS.forEach((subject) => {
+    for (const subject of SUBJECTS) {
       const filtered = records.filter((r) => r.subject === subject);
       const total = filtered.length;
       const present = filtered.reduce((acc, r) => {
@@ -105,14 +107,23 @@ export const getSubjectWiseAttendance = async (req, res) => {
         return acc + (entry?.status === "Present" ? 1 : 0);
       }, 0);
 
-      summary[subject] = {
+      totalClasses += total;
+      totalPresent += present;
+
+      summaryArray.push({
+        subject,
         total,
         present,
+        absent: total - present,
         percentage: total > 0 ? ((present / total) * 100).toFixed(2) : "0.00",
-      };
-    });
+      });
+    }
 
-    res.json(summary);
+    const overallPercentage = totalClasses > 0
+      ? ((totalPresent / totalClasses) * 100).toFixed(2)
+      : "0.00";
+
+    res.json({ summary: summaryArray, overallPercentage });
   } catch (err) {
     console.error("Error fetching subject-wise attendance:", err);
     res.status(500).json({ message: "Server error" });
