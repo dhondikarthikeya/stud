@@ -1,7 +1,6 @@
 import Attendance from "../models/Attendance.js";
 import User from "../models/User.js";
-
-const SUBJECTS = ["Telugu", "Hindi", "English", "Math", "Science", "Social"];
+import { SUBJECTS } from "../constants/subjects.js";
 
 // ✅ POST /api/attendance — Admin submits attendance
 export const postAttendance = async (req, res) => {
@@ -64,7 +63,7 @@ export const getTodaySubjectAttendance = async (req, res) => {
     const studentId = req.user.studentId;
     if (!studentId) return res.status(403).json({ message: "Student ID missing" });
 
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const today = new Date().toISOString().split("T")[0];
 
     const records = await Attendance.find({ date: today });
 
@@ -88,16 +87,11 @@ export const getTodaySubjectAttendance = async (req, res) => {
 };
 
 // ✅ GET /api/attendance/subject-wise — Overall subject-wise attendance % summary
-import Attendance from "../models/Attendance.js";
-import { SUBJECTS } from "../constants/subjects.js"; // or define inline if not imported
-
-// GET /api/attendance/student — student-only route
 export const getSubjectWiseAttendance = async (req, res) => {
   try {
     const studentId = req.user.id; // from verifyToken
     const subjectStats = {};
 
-    // Initialize counts
     SUBJECTS.forEach((subject) => {
       subjectStats[subject] = {
         subject,
@@ -107,7 +101,6 @@ export const getSubjectWiseAttendance = async (req, res) => {
       };
     });
 
-    // Fetch all attendance records for this student
     const records = await Attendance.find({
       "attendance.studentId": studentId,
     });
@@ -130,7 +123,6 @@ export const getSubjectWiseAttendance = async (req, res) => {
       }
     });
 
-    // Convert map to array and calculate %
     const result = SUBJECTS.map((subject) => {
       const { total, attended, absent } = subjectStats[subject];
       const percentage = total === 0 ? 0 : ((attended / total) * 100).toFixed(2);
@@ -143,10 +135,11 @@ export const getSubjectWiseAttendance = async (req, res) => {
       };
     });
 
-    res.json(result);
+    res.json({ summary: result });
   } catch (err) {
     console.error("❌ Error fetching subject-wise attendance:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
