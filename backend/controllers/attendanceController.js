@@ -28,10 +28,9 @@ export const getStudentAttendance = async (req, res) => {
   try {
 const studentId = req.user.studentId;
 
-    const records = await Attendance.find({
-      "attendance.studentId": userId,
-    });
-
+   const records = await Attendance.find({
+  "attendance.studentId": studentId,
+});
     const studentAttendance = records.map((record) => {
       const studentRecord = record.attendance.find(
         (a) => a.studentId === userId
