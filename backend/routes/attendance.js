@@ -1,24 +1,18 @@
+// routes/attendance.js
 import express from "express";
 import {
   postAttendance,
   getStudentAttendance,
+  getTodaySubjectAttendance, // 👈 this one for student view
   getSubjectWiseAttendance,
-  getTodaySubjectAttendance,
 } from "../controllers/attendanceController.js";
-import { verifyAdmin, verifyStudent } from "../middlewares/authMiddleware.js";
+import verifyToken from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Admin marks attendance
-router.post("/", verifyAdmin, postAttendance);
-
-// ✅ Student views full attendance list
-router.get("/student", verifyStudent, getStudentAttendance);
-
-// ✅ Student views subject-wise attendance summary
-router.get("/student/summary", verifyStudent, getSubjectWiseAttendance);
-
-// ✅ Student views today's subject-wise attendance
-router.get("/student/today", verifyStudent, getTodaySubjectAttendance);
+router.post("/", verifyToken, postAttendance); // Admin
+router.get("/student", verifyToken, getStudentAttendance); // Student full record
+router.get("/student/today", verifyToken, getTodaySubjectAttendance); // ✅ NEW: Today's summary
+router.get("/subject-wise", verifyToken, getSubjectWiseAttendance); // Subject wise summary
 
 export default router;
