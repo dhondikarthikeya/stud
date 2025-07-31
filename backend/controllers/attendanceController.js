@@ -26,7 +26,7 @@ export const postAttendance = async (req, res) => {
 // ✅ GET student full attendance records
 export const getStudentAttendance = async (req, res) => {
   try {
-    const userId = req.user.id;
+const studentId = req.user.studentId;
 
     const records = await Attendance.find({
       "attendance.studentId": userId,
