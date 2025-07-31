@@ -28,8 +28,6 @@ export const fetchTodaySubjectAttendance = async () => {
   return { summary: res.data }; // wrap array in expected format
 };
 
-};
-
 // ✅ Auth APIs
 export async function registerUser(userData) {
   const res = await api.post("/api/auth/register", userData);
