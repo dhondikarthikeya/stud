@@ -91,3 +91,28 @@ export const getSubjectWiseAttendance = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+export const getTodaySubjectAttendance = async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    const today = new Date().toISOString().split("T")[0]; // 'YYYY-MM-DD'
+
+    const todayAttendance = await Attendance.find({
+      date: today,
+      "attendance.studentId": studentId,
+    });
+
+    const result = todayAttendance.map((entry) => {
+      const record = entry.attendance.find((a) => a.studentId === studentId);
+      return {
+        subject: entry.subject,
+        status: record ? record.status : "Absent",
+        date: entry.date,
+      };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching today's subject attendance:", error);
+    res.status(500).json({ error: "Failed to fetch today's attendance" });
+  }
+};
