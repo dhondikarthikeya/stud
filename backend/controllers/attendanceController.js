@@ -63,26 +63,27 @@ export const getStudentAttendance = async (req, res) => {
 // ✅ GET /api/attendance/student/today — Student's attendance today (subject-wise)
 export const getTodaySubjectAttendance = async (req, res) => {
   try {
-    const studentId = req.user.id;
-    const today = new Date().toISOString().slice(0, 10);
+    const studentId = req.user.studentId;
 
-    const records = await Attendance.find({
-      date: today,
-      "attendance.studentId": studentId,
+    const today = new Date().toISOString().split("T")[0];
+
+    const attendanceRecords = await Attendance.find({ date: today });
+
+    const subjectWise = SUBJECTS.map((subject) => {
+      const record = attendanceRecords.find(
+        (r) => r.subject === subject && r.attendance.find((a) => a.studentId === studentId)
+      );
+
+      const status =
+        record?.attendance.find((a) => a.studentId === studentId)?.status || "Not Marked";
+
+      return { subject, status };
     });
 
-    const summary = records.map((record) => {
-      const entry = record.attendance.find((a) => a.studentId === studentId);
-      return {
-        subject: record.subject,
-        status: entry?.status || "Absent",
-      };
-    });
-
-    res.json(summary);
+    res.json({ date: today, attendance: subjectWise });
   } catch (error) {
-    console.error("Error fetching today's attendance:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in getTodaySubjectAttendance:", error);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
