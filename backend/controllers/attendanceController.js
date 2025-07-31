@@ -104,3 +104,38 @@ export const getSubjectWiseAttendance = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// backend/controllers/attendanceController.js
+
+
+
+// ✅ ADD this function to support today's subject-wise fetch for a student
+export const getTodaySubjectAttendance = async (req, res) => {
+  try {
+    const studentId = req.user.studentId;
+    const today = new Date().toISOString().split("T")[0];
+
+    const attendanceRecords = await Attendance.find({
+      date: today,
+      "attendance.studentId": studentId,
+    });
+
+    const result = attendanceRecords.map((record) => {
+      const studentStatus = record.attendance.find(
+        (entry) => entry.studentId === studentId
+      );
+      return {
+        subject: record.subject,
+        status: studentStatus?.status || "Absent",
+        date: record.date,
+      };
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error in getTodaySubjectAttendance:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
